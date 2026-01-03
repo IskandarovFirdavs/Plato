@@ -1,0 +1,33 @@
+/* Fullscreen canvas */
+.canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  background-color: #f0f0f0; /* o‘zgartirsa bo‘ladi */
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Overlay text (model nomi) */
+.overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px 10px;
+  border-radius: 5px;
+  z-index: 1;
+  font-family: sans-serif;
+}
