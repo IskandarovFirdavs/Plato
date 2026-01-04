@@ -1,13 +1,8 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useGLTF, OrbitControls, Environment, Html } from "@react-three/drei";
+import { useGLTF, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
+import { ARButton } from "three/examples/jsm/webxr/ARButton";
 import styled, { createGlobalStyle } from "styled-components";
 
 /* ================= TRANSLATIONS ================= */
@@ -15,7 +10,7 @@ const translations = {
   en: {
     title: "3D Model Viewer",
     webInstructions: "• Drag to rotate • Scroll to zoom • Right-click to pan",
-    arButtonHint: "• Press AR button to place model in your environment",
+    arButtonHint: " ",
     arModeTitle: "AR Mode Active",
     arPlacement: "• Move your device to find a surface",
     arTap: "• Tap the blue reticle to place the model",
@@ -25,20 +20,18 @@ const translations = {
     scaleModel: "• Pinch with 2 fingers to scale",
     rotateModel: "• Rotate with 2 fingers to rotate",
     loading: "Loading 3D Model...",
-    reset: "Reset Model",
     startAR: "Start AR",
     stopAR: "Stop AR",
     language: "Language",
     arNotSupported: "AR Not Supported",
     enterAR: "Enter Augmented Reality mode",
-    resetModel: "Reset AR model position",
-    exitAR: "Exit AR mode and return to viewer",
+    exitAR: "Exit AR mode",
   },
   ru: {
     title: "3D Просмотрщик Моделей",
     webInstructions:
       "• Перетащите для вращения • Скролл для масштаба • ПКМ для перемещения",
-    arButtonHint: "• Нажмите кнопку AR для размещения модели в вашем окружении",
+    arButtonHint: " ",
     arModeTitle: "AR Режим Активен",
     arPlacement: "• Перемещайте устройство для поиска поверхности",
     arTap: "• Нажмите на синий прицел для размещения модели",
@@ -49,21 +42,18 @@ const translations = {
     scaleModel: "• Сведение 2 пальцев - масштабирование",
     rotateModel: "• Вращение 2 пальцами - поворот",
     loading: "Загрузка 3D Модели...",
-    reset: "Сбросить Модель",
     startAR: "Начать AR",
     stopAR: "Остановить AR",
     language: "Язык",
     arNotSupported: "AR Не Поддерживается",
     enterAR: "Войти в режим дополненной реальности",
-    resetModel: "Сбросить позицию AR модели",
-    exitAR: "Выйти из AR режима и вернуться к просмотрщику",
+    exitAR: "Выйти из AR режима",
   },
   uz: {
     title: "3D Model Ko'ruvchi",
     webInstructions:
       "• Aylantirish uchun torting • Zoom uchun scroll qiling • Pan uchun o'ng tugma",
-    arButtonHint:
-      "• Modelni muhitingizga joylashtirish uchun AR tugmasini bosing",
+    arButtonHint: " ",
     arModeTitle: "AR Rejimi Faol",
     arPlacement: "• Sirt topish uchun qurilmani harakatlantiring",
     arTap: "• Modelni joylashtirish uchun ko'k nishanga teging",
@@ -74,14 +64,12 @@ const translations = {
     scaleModel: "• 2 barmoq bilan siqish - o'lcham o'zgartirish",
     rotateModel: "• 2 barmoq bilan aylantirish - burish",
     loading: "3D Model Yuklanmoqda...",
-    reset: "Modelni Tiklash",
     startAR: "AR ni Boshlash",
     stopAR: "AR ni To'xtatish",
     language: "Til",
     arNotSupported: "AR Qo'llab-quvvatlanmaydi",
     enterAR: "Kengaytirilgan haqiqat rejimiga kirish",
-    resetModel: "AR model holatini tiklash",
-    exitAR: "AR rejimidan chiqish va ko'ruvchiga qaytish",
+    exitAR: "AR rejimidan chiqish",
   },
 };
 
@@ -158,26 +146,33 @@ const LoadingSpinner = styled.div`
 /* ================= BUTTONS ================= */
 const ControlButton = styled.button`
   position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   border: none;
-  background: rgba(0, 0, 0, 0.85);
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  z-index: 50;
+  padding: 16px 40px;
+  border-radius: 50px;
+  font-size: 16px;
+  min-width: 160px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 
   &:hover:not(:disabled) {
-    background: rgba(0, 0, 0, 0.95);
-    transform: translateY(-2px);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0px);
+    transform: translateX(-50%) translateY(0px);
   }
 
   &:disabled {
@@ -187,53 +182,28 @@ const ControlButton = styled.button`
 `;
 
 const StartARButton = styled(ControlButton)`
-  bottom: 20px;
-  right: 20px;
-  padding: 14px 24px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 600;
-  z-index: 50;
-  gap: 8px;
+  background: linear-gradient(135deg, #007aff, #0056cc);
 
   &::before {
-    content: "👁️";
-    font-size: 16px;
+    font-size: 18px;
+    margin-right: 10px;
   }
 `;
 
 const StopARButton = styled(ControlButton)`
-  bottom: 20px;
-  right: 20px;
-  padding: 14px 24px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 600;
-  z-index: 50;
-  gap: 8px;
-  background: rgba(255, 59, 48, 0.9);
-
-  &:hover:not(:disabled) {
-    background: rgba(255, 59, 48, 0.95);
-  }
+  background: linear-gradient(135deg, #ff3b30, #cc2e25);
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
 
   &::before {
     content: "✕";
-    font-size: 16px;
+    font-size: 18px;
+    margin-right: 10px;
+    font-weight: bold;
   }
 `;
 
-const ResetButton = styled(ControlButton)`
-  bottom: 95px;
-  right: 20px;
-  padding: 12px 18px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 50;
-`;
-
-const LanguageButton = styled(ControlButton)`
+const LanguageButton = styled.button`
+  position: fixed;
   top: 20px;
   right: 20px;
   padding: 10px 16px;
@@ -244,6 +214,23 @@ const LanguageButton = styled(ControlButton)`
   display: flex;
   align-items: center;
   gap: 6px;
+  border: none;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.95);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0px);
+  }
 
   &::after {
     content: "🌐";
@@ -281,7 +268,6 @@ const LanguageOption = styled.button`
   font-size: 14px;
   color: #333;
   transition: background 0.2s ease;
-  font-family: inherit;
 
   &:hover {
     background: rgba(0, 122, 255, 0.1);
@@ -327,16 +313,6 @@ const InfoPanel = styled.div`
   }
 `;
 
-/* ================= LOADING FALLBACK ================= */
-function LoadingFallback({ text }) {
-  return (
-    <Html center>
-      <LoadingSpinner />
-      <div style={{ color: "#666", fontSize: 14, marginTop: 8 }}>{text}</div>
-    </Html>
-  );
-}
-
 /* ================= 3D MODEL COMPONENT ================= */
 function Model3D({
   url,
@@ -374,10 +350,6 @@ function Model3D({
       modelRef.current.rotation.y += 0.002;
     }
   });
-
-  if (loading) {
-    return <LoadingFallback text="Loading 3D Model..." />;
-  }
 
   return (
     <primitive
@@ -451,11 +423,69 @@ function ARReticle({ onPlaceModel }) {
   );
 }
 
+/* ================= AR SESSION MANAGER ================= */
+function ARSessionManager({ onSessionStart, onSessionEnd }) {
+  const { gl } = useThree();
+  const [isSupported, setIsSupported] = useState(false);
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      if ("xr" in navigator) {
+        try {
+          const supported = await navigator.xr.isSessionSupported(
+            "immersive-ar"
+          );
+          setIsSupported(supported);
+        } catch (err) {
+          console.warn("WebXR check failed:", err);
+          setIsSupported(false);
+        }
+      } else {
+        setIsSupported(false);
+      }
+    };
+
+    checkSupport();
+  }, []);
+
+  useEffect(() => {
+    if (!isSupported) return;
+
+    gl.xr.enabled = true;
+
+    const handleSessionStart = () => {
+      if (onSessionStart) onSessionStart();
+    };
+
+    const handleSessionEnd = () => {
+      if (onSessionEnd) onSessionEnd();
+    };
+
+    gl.xr.addEventListener("sessionstart", handleSessionStart);
+    gl.xr.addEventListener("sessionend", handleSessionEnd);
+
+    return () => {
+      gl.xr.removeEventListener("sessionstart", handleSessionStart);
+      gl.xr.removeEventListener("sessionend", handleSessionEnd);
+    };
+  }, [gl, isSupported, onSessionStart, onSessionEnd]);
+
+  return null;
+}
+
+/* ================= LANGUAGE CONTEXT ================= */
+const LanguageContext = React.createContext({
+  language: "en",
+  setLanguage: () => {},
+  t: (key) => key,
+});
+
 /* ================= MAIN COMPONENT ================= */
 export default function ModelViewer() {
   // Language state
   const [language, setLanguage] = useState("en");
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [isStartingAR, setIsStartingAR] = useState(false);
 
   // Translation function
   const t = useCallback(
@@ -471,42 +501,16 @@ export default function ModelViewer() {
 
   // AR state
   const [isARActive, setIsARActive] = useState(false);
-  const [isInARSession, setIsInARSession] = useState(false);
   const [arModelPosition, setArModelPosition] = useState(null);
   const [arScale, setArScale] = useState(0.3);
   const [arRotationY, setArRotationY] = useState(0);
   const [isARSupported, setIsARSupported] = useState(false);
 
   // References
-  const rendererRef = useRef(null);
-  const sessionRef = useRef(null);
-  const gestureState = useRef({
-    startDistance: null,
-    startAngle: null,
-    startTouch: null,
-    isInteracting: false,
-  });
+  const arButtonRef = useRef(null);
 
-  /* ================= INITIALIZATION ================= */
+  /* ================= MODEL LOADING ================= */
   useEffect(() => {
-    // Check WebXR support
-    const checkWebXRSupport = async () => {
-      if ("xr" in navigator) {
-        try {
-          const supported = await navigator.xr.isSessionSupported(
-            "immersive-ar"
-          );
-          setIsARSupported(supported);
-        } catch (err) {
-          console.warn("WebXR check failed:", err);
-          setIsARSupported(false);
-        }
-      } else {
-        setIsARSupported(false);
-      }
-    };
-
-    // Parse URL parameters
     const params = new URLSearchParams(window.location.search);
     const modelParam = params.get("model");
     const langParam = params.get("lang");
@@ -521,67 +525,80 @@ export default function ModelViewer() {
       setModelUrl(isAbsolute ? modelParam : `/models/${modelParam}`);
     }
 
-    checkWebXRSupport();
+    // Initialize WebXR
+    const initWebXR = async () => {
+      if ("xr" in navigator) {
+        try {
+          const supported = await navigator.xr.isSessionSupported(
+            "immersive-ar"
+          );
+          setIsARSupported(supported);
+
+          if (supported) {
+            const renderer = new THREE.WebGLRenderer({
+              antialias: true,
+              alpha: true,
+            });
+            renderer.xr.enabled = true;
+
+            const button = ARButton.createButton(renderer, {
+              requiredFeatures: ["hit-test"],
+              optionalFeatures: ["dom-overlay"],
+              domOverlay: { root: document.body },
+            });
+
+            button.style.display = "none";
+            button.id = "webxr-ar-button";
+            button.setAttribute("aria-hidden", "true");
+            document.body.appendChild(button);
+            arButtonRef.current = button;
+            button.style.position = "fixed";
+            button.style.bottom = "-1000px";
+            button.style.left = "-1000px";
+            button.style.opacity = "0";
+            button.style.pointerEvents = "none";
+          }
+        } catch (err) {
+          console.warn("WebXR initialization failed:", err);
+        }
+      }
+    };
+
+    initWebXR();
+
+    return () => {
+      if (arButtonRef.current) {
+        document.body.removeChild(arButtonRef.current);
+        arButtonRef.current = null;
+      }
+    };
   }, []);
 
-  /* ================= AR SESSION MANAGEMENT ================= */
-  const startARSession = useCallback(async () => {
-    if (!isARSupported) {
-      alert(t("arNotSupported"));
-      return;
+  /* ================= AR CONTROLS ================= */
+  const startARSession = useCallback(() => {
+    if (arButtonRef.current && isARSupported) {
+      setIsStartingAR(true); // ⬅️ MUHIM
+      arButtonRef.current.click();
     }
+  }, [isARSupported]);
 
-    try {
-      // Create a new WebGL renderer for XR
-      const renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true,
-      });
-      renderer.xr.enabled = true;
-      rendererRef.current = renderer;
+  const handleARSessionStart = useCallback(() => {
+    setIsARActive(true);
+    setIsStartingAR(false);
+    setArModelPosition(null);
+  }, []);
 
-      // Request AR session
-      const session = await navigator.xr.requestSession("immersive-ar", {
-        requiredFeatures: ["hit-test"],
-        optionalFeatures: ["dom-overlay"],
-        domOverlay: { root: document.body },
-      });
-
-      sessionRef.current = session;
-
-      // Set up session end handler
-      session.addEventListener("end", () => {
-        stopARSession();
-      });
-
-      // Start the session
-      await renderer.xr.setSession(session);
-      setIsInARSession(true);
-      setIsARActive(true);
-    } catch (err) {
-      console.error("Failed to start AR session:", err);
-      alert(
-        "Failed to start AR. Make sure you are on a compatible device with Chrome."
-      );
-    }
-  }, [isARSupported, t]);
+  const handleARSessionEnd = useCallback(() => {
+    setIsARActive(false);
+  }, []);
 
   const stopARSession = useCallback(() => {
-    if (sessionRef.current) {
-      sessionRef.current.end().catch(() => {});
-      sessionRef.current = null;
-    }
+    // Refresh the page to return to initial state
+    window.location.reload();
+  }, []);
 
-    if (rendererRef.current) {
-      rendererRef.current.dispose();
-      rendererRef.current = null;
-    }
-
-    setIsInARSession(false);
-    setIsARActive(false);
-    setArModelPosition(null);
-    setArScale(0.3);
-    setArRotationY(0);
+  const placeModelInAR = useCallback((position) => {
+    setArModelPosition(position);
   }, []);
 
   /* ================= GESTURE HANDLING ================= */
@@ -589,40 +606,40 @@ export default function ModelViewer() {
     if (!isARActive || !arModelPosition) return;
 
     const handleTouchStart = (e) => {
-      if (!arModelPosition || e.touches.length === 0) return;
-
-      gestureState.current.isInteracting = true;
+      if (!arModelPosition) return;
 
       if (e.touches.length === 1) {
-        gestureState.current.startTouch = {
+        // Single touch - prepare for dragging
+        const startTouch = {
           x: e.touches[0].clientX,
           y: e.touches[0].clientY,
           position: arModelPosition.clone(),
         };
+        e.target._startTouch = startTouch;
       } else if (e.touches.length === 2) {
+        // Two touches - prepare for scaling and rotation
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
 
         const dx = touch2.clientX - touch1.clientX;
         const dy = touch2.clientY - touch1.clientY;
-        gestureState.current.startDistance = Math.sqrt(dx * dx + dy * dy);
-        gestureState.current.startAngle = Math.atan2(dy, dx);
-        gestureState.current.startScale = arScale;
-        gestureState.current.startRotation = arRotationY;
+
+        e.target._startDistance = Math.sqrt(dx * dx + dy * dy);
+        e.target._startAngle = Math.atan2(dy, dx);
+        e.target._startScale = arScale;
+        e.target._startRotation = arRotationY;
       }
     };
 
     const handleTouchMove = (e) => {
-      if (!gestureState.current.isInteracting || !arModelPosition) return;
+      if (!arModelPosition) return;
 
-      if (e.touches.length === 1 && gestureState.current.startTouch) {
+      if (e.touches.length === 1 && e.target._startTouch) {
         const touch = e.touches[0];
-        const deltaX =
-          (touch.clientX - gestureState.current.startTouch.x) * 0.002;
-        const deltaZ =
-          (touch.clientY - gestureState.current.startTouch.y) * 0.002;
+        const deltaX = (touch.clientX - e.target._startTouch.x) * 0.002;
+        const deltaZ = (touch.clientY - e.target._startTouch.y) * 0.002;
 
-        const newPosition = gestureState.current.startTouch.position.clone();
+        const newPosition = e.target._startTouch.position.clone();
         newPosition.x += deltaX;
         newPosition.z += deltaZ;
 
@@ -636,28 +653,33 @@ export default function ModelViewer() {
         const currentDistance = Math.sqrt(dx * dx + dy * dy);
         const currentAngle = Math.atan2(dy, dx);
 
-        if (gestureState.current.startDistance !== null) {
+        if (e.target._startDistance !== undefined) {
           const scaleDelta =
-            (currentDistance - gestureState.current.startDistance) * 0.001;
+            (currentDistance - e.target._startDistance) * 0.001;
           const newScale = Math.max(
             0.1,
-            Math.min(2.0, gestureState.current.startScale + scaleDelta)
+            Math.min(2.0, e.target._startScale + scaleDelta)
           );
           setArScale(newScale);
         }
 
-        if (gestureState.current.startAngle !== null) {
-          const rotationDelta = currentAngle - gestureState.current.startAngle;
-          setArRotationY(gestureState.current.startRotation + rotationDelta);
+        if (e.target._startAngle !== undefined) {
+          const rotationDelta = currentAngle - e.target._startAngle;
+          setArRotationY(e.target._startRotation + rotationDelta);
         }
       }
     };
 
-    const handleTouchEnd = () => {
-      gestureState.current.isInteracting = false;
-      gestureState.current.startDistance = null;
-      gestureState.current.startAngle = null;
-      gestureState.current.startTouch = null;
+    const handleTouchEnd = (e) => {
+      // e parametrini qo'shdik
+      // Clean up
+      if (e.target) {
+        delete e.target._startTouch;
+        delete e.target._startDistance;
+        delete e.target._startAngle;
+        delete e.target._startScale;
+        delete e.target._startRotation;
+      }
     };
 
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -670,17 +692,6 @@ export default function ModelViewer() {
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isARActive, arModelPosition, arScale, arRotationY]);
-
-  /* ================= MODEL PLACEMENT ================= */
-  const placeModelInAR = useCallback((position) => {
-    setArModelPosition(position);
-  }, []);
-
-  const resetARModel = useCallback(() => {
-    setArModelPosition(null);
-    setArScale(0.3);
-    setArRotationY(0);
-  }, []);
 
   /* ================= LANGUAGE HANDLERS ================= */
   const handleLanguageChange = useCallback((lang) => {
@@ -702,7 +713,7 @@ export default function ModelViewer() {
   const isModelPlacedInAR = arModelPosition !== null;
 
   return (
-    <>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       <GlobalStyle />
       <AppContainer>
         <ModelViewerContainer>
@@ -712,11 +723,14 @@ export default function ModelViewer() {
               antialias: true,
               alpha: true,
               preserveDrawingBuffer: true,
-              xrEnabled: isInARSession,
             }}
             shadows
           >
-            {/* Lighting */}
+            <ARSessionManager
+              onSessionStart={handleARSessionStart}
+              onSessionEnd={handleARSessionEnd}
+            />
+
             <ambientLight intensity={0.8} />
             <directionalLight
               position={[10, 10, 5]}
@@ -726,15 +740,10 @@ export default function ModelViewer() {
               shadow-mapSize-height={2048}
             />
 
-            {/* Environment (only in non-AR mode) */}
             {!isARActive && <Environment preset="city" />}
 
-            {/* AR Reticle (placement target) */}
-            {isARActive && !isModelPlacedInAR && (
-              <ARReticle onPlaceModel={placeModelInAR} />
-            )}
+            {isARActive && <ARReticle onPlaceModel={placeModelInAR} />}
 
-            {/* 3D Model */}
             <Model3D
               url={modelUrl}
               isAR={isARActive && isModelPlacedInAR}
@@ -744,7 +753,6 @@ export default function ModelViewer() {
               onLoad={() => setIsLoading(false)}
             />
 
-            {/* Camera Controls (only in non-AR mode) */}
             {!isARActive && (
               <OrbitControls
                 enablePan={true}
@@ -805,7 +813,7 @@ export default function ModelViewer() {
             {languageOptions.map((option) => (
               <LanguageOption
                 key={option.code}
-                active={language === option.code}
+                className={language === option.code ? "active" : ""}
                 onClick={() => handleLanguageChange(option.code)}
               >
                 <span>
@@ -815,40 +823,14 @@ export default function ModelViewer() {
             ))}
           </LanguageDropdown>
 
-          {/* Start/Stop AR Button */}
-          {!isARActive ? (
-            <StartARButton
-              onClick={startARSession}
-              disabled={!isARSupported}
-              aria-label={t("enterAR")}
-              title={isARSupported ? t("enterAR") : t("arNotSupported")}
-            >
+          {/* AR Button - Only ONE button shown at a time */}
+          {!isARActive && !isStartingAR && (
+            <StartARButton onClick={startARSession} disabled={!isARSupported}>
               {t("startAR")}
             </StartARButton>
-          ) : (
-            <>
-              <StopARButton
-                onClick={stopARSession}
-                aria-label={t("exitAR")}
-                title={t("exitAR")}
-              >
-                {t("stopAR")}
-              </StopARButton>
-
-              {/* Reset Button (only when model is placed in AR) */}
-              {isModelPlacedInAR && (
-                <ResetButton
-                  onClick={resetARModel}
-                  aria-label={t("resetModel")}
-                  title={t("resetModel")}
-                >
-                  {t("reset")}
-                </ResetButton>
-              )}
-            </>
           )}
         </ModelViewerContainer>
       </AppContainer>
-    </>
+    </LanguageContext.Provider>
   );
 }
